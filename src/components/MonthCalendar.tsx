@@ -4,6 +4,8 @@ import { currentMonth, monthGrid, monthLabel, shiftMonth, WEEKDAYS_SHORT } from 
 interface Props {
   month: string;
   today: string;
+  /** Выбранный день — подсвечивается, только если передан. */
+  selected?: string;
   onMonthChange: (month: string) => void;
   /** Цвета привычек, выполненных в этот день (пустой массив — ничего). */
   dotsForDate: (date: string) => string[];
@@ -15,6 +17,7 @@ const MAX_DOTS = 4;
 export default function MonthCalendar({
   month,
   today,
+  selected,
   onMonthChange,
   dotsForDate,
   onDayClick,
@@ -61,11 +64,12 @@ export default function MonthCalendar({
           if (!date) return <span key={`empty-${i}`} className="day empty" />;
           const dots = dotsForDate(date);
           const isToday = date === today;
+          const isSelected = date === selected;
           const dayNumber = Number(date.slice(8, 10));
           return (
             <button
               key={date}
-              className={`day${isToday ? ' today' : ''}${dots.length ? ' marked' : ''}`}
+              className={`day${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}${dots.length ? ' marked' : ''}`}
               onClick={() => onDayClick(date)}
               aria-label={`${dayNumber}, отметок: ${dots.length}`}
             >

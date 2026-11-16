@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { monthFromDbDate, monthToDbDate } from './dates';
-import type { Goal, Habit, HabitLog, Snapshot, Theme } from '../types';
+import type { DayTask, Goal, Habit, HabitLog, Snapshot, Theme } from '../types';
 
 // ── Строки БД (snake_case) ──────────────────────────────────────
 
@@ -31,6 +31,14 @@ interface GoalRow {
   id: string;
   theme_id: string;
   month: string;
+  title: string;
+  done: boolean;
+  sort_order: number;
+}
+
+interface DayTaskRow {
+  id: string;
+  date: string;
   title: string;
   done: boolean;
   sort_order: number;
@@ -68,6 +76,14 @@ const mapGoal = (r: GoalRow): Goal => ({
   sortOrder: r.sort_order,
 });
 
+const mapDayTask = (r: DayTaskRow): DayTask => ({
+  id: r.id,
+  date: r.date,
+  title: r.title,
+  done: r.done,
+  sortOrder: r.sort_order,
+});
+
 // PostgREST отдаёт максимум 1000 строк за запрос — идём постранично.
 async function selectAll<T>(
   table: string,
@@ -94,7 +110,7 @@ async function selectAll<T>(
 // и держим в одном кеше — экраны не ходят за кусочками.
 
 export async function fetchSnapshot(): Promise<Snapshot> {
-  const [themes, habits, logs, goals] = await Promise.all([
+  const [themes, habits, logs, goals, dayTasks] = await Promise.all([
     selectAll<ThemeRow>('themes', [
       { column: 'sort_order', ascending: true },
       { column: 'id', ascending: true },
@@ -108,6 +124,15 @@ export async function fetchSnapshot(): Promise<Snapshot> {
       { column: 'month', ascending: true },
       { column: 'sort_order', ascending: true },
     ]),
+    // Таблицу day_tasks добавили позже. Если схему ещё не обновили, остальное
+    // приложение должно продолжать работать — просто без задач на день.
+    selectAll<DayTaskRow>('day_tasks', [
+      { column: 'date', ascending: true },
+      { column: 'sort_order', ascending: true },
+    ]).catch((e: unknown) => {
+      if (!isMissingTable(e)) throw e;
+      return [] as DayTaskRow[];
+    }),
   ]);
 
   return {
@@ -115,7 +140,17 @@ export async function fetchSnapshot(): Promise<Snapshot> {
     habits: habits.map(mapHabit),
     logs: logs.map(mapLog),
     goals: goals.map(mapGoal),
+    dayTasks: dayTasks.map(mapDayTask),
   };
+}
+
+function isMissingTable(e: unknown): boolean {
+  const message = (e instanceof Error ? e.message : String(e)).toLowerCase();
+  return (
+    message.includes('does not exist') ||
+    message.includes('schema cache') ||
+    message.includes('could not find the table')
+  );
 }
 
 // ── Темы ───────────────────────────────────────────────────────
@@ -211,5 +246,31 @@ export async function patchGoal(
 
 export async function removeGoal(id: string): Promise<void> {
   const { error } = await supabase.from('goals').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ── Задачи на день ─────────────────────────────────────────────
+
+export async function insertDayTask(task: DayTask): Promise<void> {
+  const { error } = await supabase.from('day_tasks').insert({
+    id: task.id,
+    date: task.date,
+    title: task.title,
+    done: task.done,
+    sort_order: task.sortOrder,
+  });
+  if (error) throw error;
+}
+
+export async function patchDayTask(
+  id: string,
+  patch: Partial<{ title: string; done: boolean; sort_order: number }>,
+): Promise<void> {
+  const { error } = await supabase.from('day_tasks').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+export async function removeDayTask(id: string): Promise<void> {
+  const { error } = await supabase.from('day_tasks').delete().eq('id', id);
   if (error) throw error;
 }

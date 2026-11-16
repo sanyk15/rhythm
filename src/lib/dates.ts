@@ -80,13 +80,19 @@ export function dayTitle(dateKey: string): string {
   return `${d} ${MONTHS[m - 1] ?? ''}`;
 }
 
-/** 'суббота, 15 ноября' — подпись в шапке. */
-export function todayHeader(): string {
+/** '2026-11-15' → 'суббота, 15 ноября' */
+export function dayWithWeekday(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
   return new Intl.DateTimeFormat('ru-RU', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(new Date());
+  }).format(new Date(y, m - 1, d));
+}
+
+/** 'суббота, 15 ноября' — подпись в шапке. */
+export function todayHeader(): string {
+  return dayWithWeekday(todayKey());
 }
 
 /**

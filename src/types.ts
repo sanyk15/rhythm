@@ -34,11 +34,21 @@ export interface Goal {
   sortOrder: number;
 }
 
+/** Разовое дело на конкретную дату — не привычка, не повторяется. */
+export interface DayTask {
+  id: string;
+  date: string; // 'YYYY-MM-DD'
+  title: string;
+  done: boolean;
+  sortOrder: number;
+}
+
 export interface Snapshot {
   themes: Theme[];
   habits: Habit[];
   logs: HabitLog[];
   goals: Goal[];
+  dayTasks: DayTask[];
 }
 
 export const EMPTY_SNAPSHOT: Snapshot = {
@@ -46,7 +56,19 @@ export const EMPTY_SNAPSHOT: Snapshot = {
   habits: [],
   logs: [],
   goals: [],
+  dayTasks: [],
 };
+
+/** Кеш мог быть записан прошлой версией приложения — дополняем недостающее. */
+export function normalizeSnapshot(value: Partial<Snapshot> | null | undefined): Snapshot {
+  return {
+    themes: value?.themes ?? [],
+    habits: value?.habits ?? [],
+    logs: value?.logs ?? [],
+    goals: value?.goals ?? [],
+    dayTasks: value?.dayTasks ?? [],
+  };
+}
 
 // Палитра для тем и привычек — цвета подобраны так, чтобы точки в календаре
 // различались и в светлой, и в тёмной теме.

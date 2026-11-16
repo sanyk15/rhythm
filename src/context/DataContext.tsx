@@ -2,21 +2,24 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from 'react';
 import {
   fetchSnapshot,
+  insertDayTask,
   insertGoal,
   insertHabit,
   insertLog,
   insertTheme,
+  patchDayTask,
   patchGoal,
   patchHabit,
   patchTheme,
+  removeDayTask,
   removeGoal,
   removeHabit,
   removeLog,
   removeTheme,
 } from '../lib/api';
 import { cacheGet, cachePeek, cacheSet, onCacheChange } from '../lib/cache';
-import { EMPTY_SNAPSHOT } from '../types';
-import type { Goal, Habit, HabitLog, Snapshot, Theme } from '../types';
+import { normalizeSnapshot } from '../types';
+import type { DayTask, Goal, Habit, HabitLog, Snapshot, Theme } from '../types';
 
 const CACHE_KEY = 'snapshot';
 
@@ -25,6 +28,7 @@ interface DataContextValue {
   habits: Habit[];
   logs: HabitLog[];
   goals: Goal[];
+  dayTasks: DayTask[];
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -46,6 +50,9 @@ interface DataContextValue {
   createGoal: (themeId: string, month: string, title: string) => Promise<void>;
   updateGoal: (id: string, patch: Partial<Pick<Goal, 'title' | 'done'>>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
+  createDayTask: (date: string, title: string) => Promise<void>;
+  updateDayTask: (id: string, patch: Partial<Pick<DayTask, 'title' | 'done'>>) => Promise<void>;
+  deleteDayTask: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -68,10 +75,10 @@ function humanizeError(e: unknown): string {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [snap, setSnap] = useState<Snapshot>(
-    () => cacheGet<Snapshot>(CACHE_KEY) ?? EMPTY_SNAPSHOT,
+  const [snap, setSnap] = useState<Snapshot>(() =>
+    normalizeSnapshot(cacheGet<Partial<Snapshot>>(CACHE_KEY)),
   );
-  const [loading, setLoading] = useState(() => cacheGet<Snapshot>(CACHE_KEY) === null);
+  const [loading, setLoading] = useState(() => cacheGet<Partial<Snapshot>>(CACHE_KEY) === null);
   const [error, setError] = useState<string | null>(null);
 
   const snapRef = useRef(snap);
@@ -108,8 +115,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Другая вкладка обновила данные — подхватываем.
   useEffect(() => {
     return onCacheChange(CACHE_KEY, () => {
-      const next = cachePeek<Snapshot>(CACHE_KEY);
-      if (!next || next === snapRef.current) return;
+      const raw = cachePeek<Partial<Snapshot>>(CACHE_KEY);
+      if (!raw || raw === snapRef.current) return;
+      const next = normalizeSnapshot(raw);
       snapRef.current = next;
       setSnap(next);
     });
@@ -207,6 +215,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           habits: s.habits.filter((h) => h.themeId !== id),
           logs: s.logs.filter((l) => !habitIds.has(l.habitId)),
           goals: s.goals.filter((g) => g.themeId !== id),
+          dayTasks: s.dayTasks,
         };
       },
       () => removeTheme(id),
@@ -323,11 +332,54 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // ── Задачи на день ──────────────────────────────────────────
+
+  async function createDayTask(date: string, title: string) {
+    const current = snapRef.current;
+    const max = current.dayTasks
+      .filter((t) => t.date === date)
+      .reduce((m, t) => Math.max(m, t.sortOrder), -1);
+    const task: DayTask = {
+      id: newId(),
+      date,
+      title,
+      done: false,
+      sortOrder: max + 1,
+    };
+    await optimistic(
+      (s) => ({ ...s, dayTasks: [...s.dayTasks, task] }),
+      () => insertDayTask(task),
+    );
+  }
+
+  async function updateDayTask(id: string, patch: Partial<Pick<DayTask, 'title' | 'done'>>) {
+    await optimistic(
+      (s) => ({
+        ...s,
+        dayTasks: s.dayTasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      }),
+      () => {
+        const db: Parameters<typeof patchDayTask>[1] = {};
+        if (patch.title !== undefined) db.title = patch.title;
+        if (patch.done !== undefined) db.done = patch.done;
+        return patchDayTask(id, db);
+      },
+    );
+  }
+
+  async function deleteDayTask(id: string) {
+    await optimistic(
+      (s) => ({ ...s, dayTasks: s.dayTasks.filter((t) => t.id !== id) }),
+      () => removeDayTask(id),
+    );
+  }
+
   const value: DataContextValue = {
     themes: snap.themes,
     habits: snap.habits,
     logs: snap.logs,
     goals: snap.goals,
+    dayTasks: snap.dayTasks,
     loading,
     error,
     refresh,
@@ -342,6 +394,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     createGoal,
     updateGoal,
     deleteGoal,
+    createDayTask,
+    updateDayTask,
+    deleteDayTask,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

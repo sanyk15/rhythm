@@ -4,6 +4,7 @@ import { currentMonth, monthLabel, monthName, todayKey } from '../lib/dates';
 import { shade } from '../lib/colors';
 import { haptic } from '../lib/haptics';
 import type { Goal, Habit, Theme } from '../types';
+import HabitRow from './HabitRow';
 import MonthCalendar from './MonthCalendar';
 
 interface Props {
@@ -172,39 +173,6 @@ export default function ThemePage({
           ))}
         </section>
       </div>
-    </div>
-  );
-}
-
-function HabitRow({
-  habit,
-  done,
-  onToggle,
-  onEdit,
-}: {
-  habit: Habit;
-  done: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-}) {
-  return (
-    <div className="row">
-      <button
-        className={`check${done ? ' on' : ''}`}
-        style={done ? { background: habit.color, borderColor: habit.color } : { borderColor: `${habit.color}88` }}
-        onClick={onToggle}
-        aria-pressed={done}
-        aria-label={done ? `Снять отметку «${habit.title}»` : `Отметить «${habit.title}»`}
-      >
-        {done ? '✓' : ''}
-      </button>
-      <button className="row-main" onClick={onToggle}>
-        <span className="habit-dot" style={{ background: habit.color }} />
-        <span className={`row-title${done ? ' done' : ''}`}>{habit.title}</span>
-      </button>
-      <button className="row-edit" onClick={onEdit} aria-label={`Изменить «${habit.title}»`}>
-        ✎
-      </button>
     </div>
   );
 }

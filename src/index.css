@@ -112,6 +112,9 @@ a {
 .brand-date {
   font-size: 12px;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-actions {
@@ -163,18 +166,99 @@ a {
   overflow: hidden;
 }
 
+/* ── Переключатель режимов в шапке ──────────────────── */
+
+.mode-switch {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 13px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Белая пилюля переезжает к активной иконке — переключение без рывка. */
+.mode-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 4px);
+  height: 30px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: none;
+}
+
+.mode-switch--themes .mode-thumb {
+  transform: translateX(calc(100% + 2px));
+}
+
+.mode-option {
+  position: relative;
+  z-index: 1;
+  width: 31px;
+  height: 30px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+
+.mode-option svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+
+.mode-option.active {
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-thumb,
+  .mode-option {
+    transition: none;
+  }
+
+  .mode-panel {
+    animation: none;
+  }
+}
+
 /* ── Карусель тем ───────────────────────────────────── */
 
+/* Тема переключается лёгким появлением — без резкой смены экрана. */
+.mode-panel {
+  height: 100%;
+  animation: fade-in 0.18s ease;
+}
+
+/* Горизонтальный скролл со снапом: листание отдано нативной физике
+   платформы, поэтому движение плавное и без рывков. */
 .carousel-viewport {
   height: 100%;
-  overflow: hidden;
-  touch-action: pan-y;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.carousel-viewport::-webkit-scrollbar {
+  display: none;
 }
 
 .carousel {
   display: flex;
+  width: 100%;
   height: 100%;
-  will-change: transform;
 }
 
 .carousel-page {
@@ -183,7 +267,8 @@ a {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  touch-action: pan-y;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .page-dots {
@@ -407,6 +492,16 @@ a {
   font-weight: 750;
 }
 
+.day.selected {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.day.selected .day-num {
+  color: var(--accent);
+  font-weight: 750;
+}
+
 .day-dots {
   display: flex;
   flex-wrap: wrap;
@@ -432,6 +527,82 @@ a {
   font-size: 8px;
   line-height: 1;
   color: var(--muted);
+}
+
+/* ── Дневной режим ──────────────────────────────────── */
+
+.day-page {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 0 12px calc(24px + env(safe-area-inset-bottom));
+}
+
+.day-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.day-date {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.day-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.day-today-btn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.day-group {
+  margin-top: 12px;
+}
+
+.day-group-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0 4px;
+}
+
+.day-group-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.day-group-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.day-group-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Строки привычек и целей ────────────────────────── */

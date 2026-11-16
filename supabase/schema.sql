@@ -5,6 +5,7 @@
 --   themes       — «экраны» с заглавным фото, переключаются свайпом
 --   habits       — привычки темы, отмечаются по датам (habit_logs)
 --   goals        — цели месяца (тоггл сделано/нет)
+--   day_tasks    — разовые задачи на конкретную дату
 --
 -- Все таблицы закрыты RLS: user_id = auth.uid(). Регистрация — по коду-приглашению.
 
@@ -56,18 +57,32 @@ create table if not exists public.goals (
   created_at  timestamptz not null default now()
 );
 
+-- ── Разовые задачи на день ─────────────────────────────────────
+-- Не привычка: живёт только на своей дате и не повторяется.
+create table if not exists public.day_tasks (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  date        date not null,
+  title       text not null,
+  done        boolean not null default false,
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+
 -- ── Индексы ────────────────────────────────────────────────────
 create index if not exists themes_user_idx      on public.themes (user_id, sort_order);
 create index if not exists habits_theme_idx     on public.habits (user_id, theme_id, sort_order);
 create index if not exists habit_logs_user_date_idx on public.habit_logs (user_id, date);
 create index if not exists habit_logs_habit_idx on public.habit_logs (habit_id);
 create index if not exists goals_lookup_idx     on public.goals (user_id, theme_id, month, sort_order);
+create index if not exists day_tasks_user_date_idx on public.day_tasks (user_id, date, sort_order);
 
 -- ── Row Level Security ─────────────────────────────────────────
 alter table public.themes     enable row level security;
 alter table public.habits     enable row level security;
 alter table public.habit_logs enable row level security;
 alter table public.goals      enable row level security;
+alter table public.day_tasks  enable row level security;
 
 drop policy if exists "themes_own" on public.themes;
 create policy "themes_own" on public.themes
@@ -83,6 +98,10 @@ create policy "habit_logs_own" on public.habit_logs
 
 drop policy if exists "goals_own" on public.goals;
 create policy "goals_own" on public.goals
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "day_tasks_own" on public.day_tasks;
+create policy "day_tasks_own" on public.day_tasks
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ── Целостность: ссылки только на свои темы/привычки ───────────
