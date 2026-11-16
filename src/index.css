@@ -91,6 +91,14 @@ a {
   flex-shrink: 0;
 }
 
+/* В standalone-PWA iOS сверху есть «liquid glass», который слегка наплывает
+   на контент и мылит заголовок, кнопки и свитч. Опускаем шапку чуть ниже. */
+@media (display-mode: standalone) {
+  .topbar {
+    padding-top: calc(24px + env(safe-area-inset-top));
+  }
+}
+
 .brand {
   display: flex;
   flex-direction: column;
