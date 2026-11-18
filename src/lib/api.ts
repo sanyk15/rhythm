@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { monthFromDbDate, monthToDbDate } from './dates';
+import { normalizeWeekdays } from '../types';
 import type { DayTask, Goal, Habit, HabitLog, Snapshot, Theme } from '../types';
 
 // ── Строки БД (snake_case) ──────────────────────────────────────
@@ -19,6 +20,7 @@ interface HabitRow {
   color: string;
   sort_order: number;
   archived: boolean;
+  weekdays: number[] | null;
 }
 
 interface HabitLogRow {
@@ -59,6 +61,7 @@ const mapHabit = (r: HabitRow): Habit => ({
   color: r.color,
   sortOrder: r.sort_order,
   archived: r.archived,
+  weekdays: normalizeWeekdays(r.weekdays),
 });
 
 const mapLog = (r: HabitLogRow): HabitLog => ({
@@ -189,13 +192,20 @@ export async function insertHabit(habit: Habit): Promise<void> {
     color: habit.color,
     sort_order: habit.sortOrder,
     archived: habit.archived,
+    weekdays: habit.weekdays,
   });
   if (error) throw error;
 }
 
 export async function patchHabit(
   id: string,
-  patch: Partial<{ title: string; color: string; sort_order: number; archived: boolean }>,
+  patch: Partial<{
+    title: string;
+    color: string;
+    sort_order: number;
+    archived: boolean;
+    weekdays: number[];
+  }>,
 ): Promise<void> {
   const { error } = await supabase.from('habits').update(patch).eq('id', id);
   if (error) throw error;

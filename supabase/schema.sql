@@ -3,7 +3,7 @@
 --
 -- Модель:
 --   themes       — «экраны» с заглавным фото, переключаются свайпом
---   habits       — привычки темы, отмечаются по датам (habit_logs)
+--   habits       — привычки темы с расписанием по дням недели, отметки в habit_logs
 --   goals        — цели месяца (тоггл сделано/нет)
 --   day_tasks    — разовые задачи на конкретную дату
 --
@@ -31,8 +31,17 @@ create table if not exists public.habits (
   color       text not null default '#7a5af8',
   sort_order  integer not null default 0,
   archived    boolean not null default false,
+  weekdays    smallint[] not null default '{1,2,3,4,5,6,7}',
   created_at  timestamptz not null default now()
 );
+
+-- Периодичность появилась позже: у уже созданных привычек — каждый день.
+alter table public.habits
+  add column if not exists weekdays smallint[] not null default '{1,2,3,4,5,6,7}';
+
+alter table public.habits drop constraint if exists habits_weekdays_check;
+alter table public.habits add constraint habits_weekdays_check
+  check (cardinality(weekdays) > 0 and weekdays <@ '{1,2,3,4,5,6,7}'::smallint[]);
 
 -- ── Отметки: одна привычка — одна дата, не больше ──────────────
 create table if not exists public.habit_logs (

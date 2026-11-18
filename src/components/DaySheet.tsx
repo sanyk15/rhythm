@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import Modal from './Modal';
 import { useData } from '../context/DataContext';
-import { dayTitle } from '../lib/dates';
+import { dayTitle, dayOfWeek } from '../lib/dates';
 import { haptic } from '../lib/haptics';
 
 interface Props {
@@ -14,12 +14,17 @@ interface Props {
 export default function DaySheet({ themeId, date, onClose }: Props) {
   const { habits, logs, toggleLog } = useData();
 
+  // На конкретной дате показываем только привычки, которые в этот день недели
+  // по расписанию.
   const themeHabits = useMemo(
     () =>
       habits
-        .filter((h) => h.themeId === themeId && !h.archived)
+        .filter(
+          (h) =>
+            h.themeId === themeId && !h.archived && h.weekdays.includes(dayOfWeek(date)),
+        )
         .sort((a, b) => a.sortOrder - b.sortOrder),
-    [habits, themeId],
+    [habits, themeId, date],
   );
 
   const doneSet = useMemo(
@@ -31,7 +36,7 @@ export default function DaySheet({ themeId, date, onClose }: Props) {
     <Modal title={dayTitle(date)} onClose={onClose}>
       <div className="form">
         {themeHabits.length === 0 && (
-          <p className="empty-line">В этой теме пока нет привычек.</p>
+          <p className="empty-line">В этой теме нет привычек на этот день.</p>
         )}
 
         {themeHabits.map((habit) => {

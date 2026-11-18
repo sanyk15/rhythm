@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
-import { currentMonth, monthLabel, monthName, todayKey } from '../lib/dates';
+import { currentMonth, dayOfWeek, monthLabel, monthName, todayKey } from '../lib/dates';
 import { shade } from '../lib/colors';
 import { haptic } from '../lib/haptics';
 import type { Goal, Habit, Theme } from '../types';
@@ -29,6 +29,7 @@ export default function ThemePage({
   const { habits, logs, goals, toggleLog, updateGoal } = useData();
   const [month, setMonth] = useState(currentMonth);
   const today = todayKey();
+  const todayDow = dayOfWeek(today);
 
   const themeHabits = useMemo(
     () =>
@@ -53,14 +54,19 @@ export default function ThemePage({
   }, [logs, habitById]);
 
   // Порядок точек — как порядок привычек в списке, а не как пришли отметки.
+  // На дату попадают только привычки, запланированные на этот день недели.
   const dotsForDate = (date: string): string[] => {
     const done = doneByDate.get(date);
     if (!done) return [];
-    return themeHabits.filter((h) => done.has(h.id)).map((h) => h.color);
+    const dow = dayOfWeek(date);
+    return themeHabits
+      .filter((h) => h.weekdays.includes(dow) && done.has(h.id))
+      .map((h) => h.color);
   };
 
   const doneTodaySet = doneByDate.get(today) ?? new Set<string>();
-  const doneToday = doneTodaySet.size;
+  const scheduledToday = themeHabits.filter((h) => h.weekdays.includes(todayDow));
+  const doneToday = scheduledToday.filter((h) => doneTodaySet.has(h.id)).length;
 
   const monthGoals = useMemo(
     () =>
@@ -99,9 +105,9 @@ export default function ThemePage({
         </button>
         <div className="theme-hero-bottom">
           <h1 className="theme-hero-title">{theme.title}</h1>
-          {themeHabits.length > 0 && (
+          {scheduledToday.length > 0 && (
             <span className="theme-hero-count">
-              {doneToday} из {themeHabits.length} сегодня
+              {doneToday} из {scheduledToday.length} сегодня
             </span>
           )}
         </div>
@@ -120,7 +126,11 @@ export default function ThemePage({
           <div className="section-head">
             <h2>Привычки</h2>
             <span className="section-count">
-              {themeHabits.length ? `сегодня ${doneToday} из ${themeHabits.length}` : 'пока нет'}
+              {themeHabits.length
+                ? scheduledToday.length
+                  ? `сегодня ${doneToday} из ${scheduledToday.length}`
+                  : 'сегодня нет'
+                : 'пока нет'}
             </span>
           </div>
 
@@ -135,6 +145,7 @@ export default function ThemePage({
               key={habit.id}
               habit={habit}
               done={doneTodaySet.has(habit.id)}
+              off={!habit.weekdays.includes(todayDow)}
               onToggle={() => handleToggle(habit)}
               onEdit={() => onEditHabit(habit.id)}
             />

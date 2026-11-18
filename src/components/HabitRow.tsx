@@ -1,3 +1,4 @@
+import { weekdaysLabel } from '../lib/dates';
 import type { Habit } from '../types';
 
 interface Props {
@@ -6,13 +7,18 @@ interface Props {
   onToggle: () => void;
   /** Если не передан — кнопки правки нет (например, в дневном режиме). */
   onEdit?: () => void;
+  /** Привычка не запланирована на этот день — показываем приглушённо. */
+  off?: boolean;
 }
 
-export default function HabitRow({ habit, done, onToggle, onEdit }: Props) {
+export default function HabitRow({ habit, done, onToggle, onEdit, off = false }: Props) {
+  const schedule = weekdaysLabel(habit.weekdays);
+
   return (
     <div className="row">
       <button
-        className={`check${done ? ' on' : ''}`}
+        className={`check${done ? ' on' : ''}${off ? ' off' : ''}`}
+        disabled={off}
         style={done ? { background: habit.color, borderColor: habit.color } : { borderColor: `${habit.color}88` }}
         onClick={onToggle}
         aria-pressed={done}
@@ -20,9 +26,14 @@ export default function HabitRow({ habit, done, onToggle, onEdit }: Props) {
       >
         {done ? '✓' : ''}
       </button>
-      <button className="row-main" onClick={onToggle}>
+      <button className="row-main" onClick={onToggle} disabled={off}>
         <span className="habit-dot" style={{ background: habit.color }} />
-        <span className={`row-title${done ? ' done' : ''}`}>{habit.title}</span>
+        <span className="row-text">
+          <span className={`row-title${done ? ' done' : ''}${off ? ' off' : ''}`}>
+            {habit.title}
+          </span>
+          {schedule && <span className="habit-schedule">{schedule}</span>}
+        </span>
       </button>
       {onEdit && (
         <button className="row-edit" onClick={onEdit} aria-label={`Изменить «${habit.title}»`}>

@@ -16,6 +16,8 @@ export interface Habit {
   color: string; // HEX — цвет точки в календаре
   sortOrder: number;
   archived: boolean;
+  /** Дни недели, когда привычка активна: 1 — пн … 7 — вс. */
+  weekdays: number[];
 }
 
 /** Отметка «привычка выполнена в дату». Одна пара (habitId, date) — максимум одна. */
@@ -63,11 +65,25 @@ export const EMPTY_SNAPSHOT: Snapshot = {
 export function normalizeSnapshot(value: Partial<Snapshot> | null | undefined): Snapshot {
   return {
     themes: value?.themes ?? [],
-    habits: value?.habits ?? [],
+    // У привычек из старого кеша нет weekdays — считаем, что каждый день.
+    habits: (value?.habits ?? []).map((h) => ({
+      ...h,
+      weekdays: normalizeWeekdays(h.weekdays),
+    })),
     logs: value?.logs ?? [],
     goals: value?.goals ?? [],
     dayTasks: value?.dayTasks ?? [],
   };
+}
+
+/** Все дни недели: 1 — понедельник … 7 — воскресенье. */
+export const ALL_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
+
+/** Приводит дни недели к валидному набору; пустое значение = каждый день. */
+export function normalizeWeekdays(value: number[] | null | undefined): number[] {
+  if (!value || value.length === 0) return [...ALL_WEEKDAYS];
+  const days = [...new Set(value.filter((d) => d >= 1 && d <= 7))].sort((a, b) => a - b);
+  return days.length > 0 ? days : [...ALL_WEEKDAYS];
 }
 
 // Палитра для тем и привычек — цвета подобраны так, чтобы точки в календаре

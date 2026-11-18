@@ -2,9 +2,10 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import Modal from './Modal';
 import { useData } from '../context/DataContext';
-import { PALETTE } from '../types';
+import { ALL_WEEKDAYS, PALETTE } from '../types';
 import type { Habit } from '../types';
 import { haptic } from '../lib/haptics';
+import { WEEKDAYS_SHORT } from '../lib/dates';
 
 interface Props {
   themeId: string;
@@ -17,9 +18,19 @@ export default function HabitForm({ themeId, habit, onClose }: Props) {
 
   const [title, setTitle] = useState(habit?.title ?? '');
   const [color, setColor] = useState(habit?.color ?? PALETTE[3]);
+  const [weekdays, setWeekdays] = useState<number[]>(habit?.weekdays ?? ALL_WEEKDAYS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  function toggleDay(day: number) {
+    haptic(8);
+    setWeekdays((cur) =>
+      cur.includes(day)
+        ? cur.filter((d) => d !== day)
+        : [...cur, day].sort((a, b) => a - b),
+    );
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,12 +39,16 @@ export default function HabitForm({ themeId, habit, onClose }: Props) {
       setError('Введи название привычки.');
       return;
     }
+    if (weekdays.length === 0) {
+      setError('Выбери хотя бы один день недели.');
+      return;
+    }
 
     setBusy(true);
     setError(null);
     try {
-      if (habit) await updateHabit(habit.id, { title: clean, color });
-      else await createHabit(themeId, { title: clean, color });
+      if (habit) await updateHabit(habit.id, { title: clean, color, weekdays });
+      else await createHabit(themeId, { title: clean, color, weekdays });
       haptic();
       onClose();
     } catch (err) {
@@ -87,6 +102,39 @@ export default function HabitForm({ themeId, habit, onClose }: Props) {
             />
           ))}
         </div>
+
+        <div className="weekday-head">
+          <span className="field-label">Повторять по дням</span>
+          {weekdays.length < ALL_WEEKDAYS.length && (
+            <button
+              type="button"
+              className="weekday-all"
+              onClick={() => setWeekdays([...ALL_WEEKDAYS])}
+            >
+              Каждый день
+            </button>
+          )}
+        </div>
+        <div className="weekday-picker">
+          {WEEKDAYS_SHORT.map((label, i) => {
+            const day = i + 1;
+            const active = weekdays.includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                className={`weekday-chip${active ? ' active' : ''}`}
+                onClick={() => toggleDay(day)}
+                aria-pressed={active}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="form-hint">
+          Привычка будет появляться в чек-листе только в выбранные дни.
+        </p>
 
         {habit && (
           <p className="form-hint">

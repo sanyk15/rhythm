@@ -18,7 +18,7 @@ import {
   removeTheme,
 } from '../lib/api';
 import { cacheGet, cachePeek, cacheSet, onCacheChange } from '../lib/cache';
-import { normalizeSnapshot } from '../types';
+import { normalizeSnapshot, normalizeWeekdays } from '../types';
 import type { DayTask, Goal, Habit, HabitLog, Snapshot, Theme } from '../types';
 
 const CACHE_KEY = 'snapshot';
@@ -43,8 +43,14 @@ interface DataContextValue {
   ) => Promise<void>;
   moveTheme: (id: string, direction: -1 | 1) => Promise<void>;
   deleteTheme: (id: string) => Promise<void>;
-  createHabit: (themeId: string, input: { title: string; color: string }) => Promise<void>;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, 'title' | 'color'>>) => Promise<void>;
+  createHabit: (
+    themeId: string,
+    input: { title: string; color: string; weekdays: number[] },
+  ) => Promise<void>;
+  updateHabit: (
+    id: string,
+    patch: Partial<Pick<Habit, 'title' | 'color' | 'weekdays'>>,
+  ) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   toggleLog: (habitId: string, date: string) => Promise<void>;
   createGoal: (themeId: string, month: string, title: string) => Promise<void>;
@@ -85,9 +91,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const aliveRef = useRef(true);
 
   const commit = useCallback((next: Snapshot) => {
-    snapRef.current = next;
-    setSnap(next);
-    cacheSet(CACHE_KEY, next);
+    // Держим инвариант: в состоянии и кеше всегда нормализованный снимок
+    // (например, у привычек из старого кеша появляется weekdays).
+    const normalized = normalizeSnapshot(next);
+    snapRef.current = normalized;
+    setSnap(normalized);
+    cacheSet(CACHE_KEY, normalized);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -224,7 +233,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ── Привычки ────────────────────────────────────────────────
 
-  async function createHabit(themeId: string, input: { title: string; color: string }) {
+  async function createHabit(
+    themeId: string,
+    input: { title: string; color: string; weekdays: number[] },
+  ) {
     const current = snapRef.current;
     const max = current.habits
       .filter((h) => h.themeId === themeId)
@@ -236,6 +248,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       color: input.color,
       sortOrder: max + 1,
       archived: false,
+      weekdays: normalizeWeekdays(input.weekdays),
     };
     await optimistic(
       (s) => ({ ...s, habits: [...s.habits, habit] }),
@@ -243,7 +256,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  async function updateHabit(id: string, patch: Partial<Pick<Habit, 'title' | 'color'>>) {
+  async function updateHabit(
+    id: string,
+    patch: Partial<Pick<Habit, 'title' | 'color' | 'weekdays'>>,
+  ) {
     await optimistic(
       (s) => ({
         ...s,
@@ -253,6 +269,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const db: Parameters<typeof patchHabit>[1] = {};
         if (patch.title !== undefined) db.title = patch.title;
         if (patch.color !== undefined) db.color = patch.color;
+        if (patch.weekdays !== undefined) db.weekdays = normalizeWeekdays(patch.weekdays);
         return patchHabit(id, db);
       },
     );

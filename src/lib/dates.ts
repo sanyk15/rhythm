@@ -95,6 +95,21 @@ export function todayHeader(): string {
   return dayWithWeekday(todayKey());
 }
 
+/** День недели даты: 1 — понедельник … 7 — воскресенье. */
+export function dayOfWeek(dateKey: string): number {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return new Date(y, m - 1, d).getDay() || 7;
+}
+
+/** [1, 3, 5] → 'Пн, Ср, Пт'; полная неделя → '' (подпись не нужна). */
+export function weekdaysLabel(days: number[]): string {
+  if (days.length >= 7) return '';
+  const sorted = [...days].sort((a, b) => a - b);
+  if (sorted.length === 5 && sorted.every((d, i) => d === i + 1)) return 'будни';
+  if (sorted.length === 2 && sorted[0] === 6 && sorted[1] === 7) return 'выходные';
+  return sorted.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ');
+}
+
 /**
  * Сетка месяца с понедельника: массив 'YYYY-MM-DD' и null для пустых клеток
  * (до первого числа и после последнего, чтобы неделя была полной).

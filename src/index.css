@@ -685,6 +685,27 @@ a {
   text-decoration: line-through;
 }
 
+.row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.row-title.off {
+  color: var(--muted);
+}
+
+.habit-schedule {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.row-main:disabled {
+  cursor: default;
+}
+
 .habit-dot {
   width: 8px;
   height: 8px;
@@ -709,6 +730,10 @@ a {
 
 .check:active {
   transform: scale(0.92);
+}
+
+.check.off {
+  opacity: 0.4;
 }
 
 .goal-check {
@@ -1056,6 +1081,51 @@ input:focus {
   inset: -4px;
   border-radius: 50%;
   border: 2px solid var(--accent);
+}
+
+/* Дни недели у привычки */
+
+.weekday-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.weekday-all {
+  padding: 2px 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.weekday-picker {
+  display: flex;
+  gap: 5px;
+}
+
+.weekday-chip {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.weekday-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.weekday-chip:active {
+  transform: scale(0.96);
 }
 
 .move-row {
